@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"errors"
-	"io"
 	"reflect"
 	"sync"
 
@@ -60,20 +59,15 @@ func (s *server) Disconnect(ctx context.Context, input *protos.ConnectRequest) (
 	}, nil
 }
 
-func (s *server) Writing(stream protos.Chat_WritingServer) error {
-	for {
-		in, err := stream.Recv()
-		if err == io.EOF {
-			reply := s.getConnectedUsers()
-			return stream.SendAndClose(reply)
-		}
-		if err != nil {
-			return err
-		}
-		s.mutex.Lock()
-		s.connectedUsers[in.Name] = in.Writing
-		s.mutex.Unlock()
-	}
+func (s *server) Writing(ctx context.Context, input *protos.StatusRequest) (*protos.StatusReply, error) {
+
+	s.mutex.Lock()
+	s.connectedUsers[input.Name] = input.Writing
+	reply := s.getConnectedUsers()
+	s.mutex.Unlock()
+
+	return reply, nil
+
 }
 
 func (s *server) WhoIsWriting(in *protos.StatusRequest, stream protos.Chat_WhoIsWritingServer) error {
@@ -93,28 +87,25 @@ func (s *server) WhoIsWriting(in *protos.StatusRequest, stream protos.Chat_WhoIs
 
 }
 
-func (s *server) SendMessage(stream protos.Chat_SendMessageServer) error {
-	for {
-		in, err := stream.Recv()
-		if err == io.EOF {
-			reply := &protos.MessageReply{}
-			return stream.SendAndClose(reply)
-		}
-		if err != nil {
-			return err
-		}
-		s.mutex.Lock()
-		if _, ok := s.connectedUsers[in.Name]; !ok {
-			s.mutex.Unlock()
-			return errors.New("User " + in.Name + " isn't connected")
-		}
-		for username, queue := range s.userMessages {
-			if username != in.Name {
-				queue.Enqueue(in)
-			}
-		}
+func (s *server) SendMessage(ctx context.Context, input *protos.MessageRequest) (*protos.MessageReply, error) {
+
+	s.mutex.Lock()
+	if _, ok := s.connectedUsers[input.Name]; !ok {
 		s.mutex.Unlock()
+		return nil, errors.New("User " + input.Name + " isn't connected")
 	}
+	for username, queue := range s.userMessages {
+		if username != input.Name {
+			queue.Enqueue(input)
+		}
+	}
+	s.mutex.Unlock()
+
+	return &protos.MessageReply{
+		Name:    input.Name,
+		Message: "Message received",
+	}, nil
+
 }
 
 func (s *server) ReceiveMessage(in *protos.MessageRequest, stream protos.Chat_ReceiveMessageServer) error {

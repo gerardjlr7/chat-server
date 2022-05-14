@@ -22,9 +22,9 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ChatClient interface {
-	Writing(ctx context.Context, opts ...grpc.CallOption) (Chat_WritingClient, error)
+	Writing(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusReply, error)
 	WhoIsWriting(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (Chat_WhoIsWritingClient, error)
-	SendMessage(ctx context.Context, opts ...grpc.CallOption) (Chat_SendMessageClient, error)
+	SendMessage(ctx context.Context, in *MessageRequest, opts ...grpc.CallOption) (*MessageReply, error)
 	ReceiveMessage(ctx context.Context, in *MessageRequest, opts ...grpc.CallOption) (Chat_ReceiveMessageClient, error)
 	Connect(ctx context.Context, in *ConnectRequest, opts ...grpc.CallOption) (*ConnectReply, error)
 	Disconnect(ctx context.Context, in *ConnectRequest, opts ...grpc.CallOption) (*ConnectReply, error)
@@ -38,42 +38,17 @@ func NewChatClient(cc grpc.ClientConnInterface) ChatClient {
 	return &chatClient{cc}
 }
 
-func (c *chatClient) Writing(ctx context.Context, opts ...grpc.CallOption) (Chat_WritingClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Chat_ServiceDesc.Streams[0], "/protos.Chat/Writing", opts...)
+func (c *chatClient) Writing(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusReply, error) {
+	out := new(StatusReply)
+	err := c.cc.Invoke(ctx, "/protos.Chat/Writing", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &chatWritingClient{stream}
-	return x, nil
-}
-
-type Chat_WritingClient interface {
-	Send(*StatusRequest) error
-	CloseAndRecv() (*StatusReply, error)
-	grpc.ClientStream
-}
-
-type chatWritingClient struct {
-	grpc.ClientStream
-}
-
-func (x *chatWritingClient) Send(m *StatusRequest) error {
-	return x.ClientStream.SendMsg(m)
-}
-
-func (x *chatWritingClient) CloseAndRecv() (*StatusReply, error) {
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	m := new(StatusReply)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
+	return out, nil
 }
 
 func (c *chatClient) WhoIsWriting(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (Chat_WhoIsWritingClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Chat_ServiceDesc.Streams[1], "/protos.Chat/WhoIsWriting", opts...)
+	stream, err := c.cc.NewStream(ctx, &Chat_ServiceDesc.Streams[0], "/protos.Chat/WhoIsWriting", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -104,42 +79,17 @@ func (x *chatWhoIsWritingClient) Recv() (*StatusReply, error) {
 	return m, nil
 }
 
-func (c *chatClient) SendMessage(ctx context.Context, opts ...grpc.CallOption) (Chat_SendMessageClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Chat_ServiceDesc.Streams[2], "/protos.Chat/SendMessage", opts...)
+func (c *chatClient) SendMessage(ctx context.Context, in *MessageRequest, opts ...grpc.CallOption) (*MessageReply, error) {
+	out := new(MessageReply)
+	err := c.cc.Invoke(ctx, "/protos.Chat/SendMessage", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &chatSendMessageClient{stream}
-	return x, nil
-}
-
-type Chat_SendMessageClient interface {
-	Send(*MessageRequest) error
-	CloseAndRecv() (*MessageReply, error)
-	grpc.ClientStream
-}
-
-type chatSendMessageClient struct {
-	grpc.ClientStream
-}
-
-func (x *chatSendMessageClient) Send(m *MessageRequest) error {
-	return x.ClientStream.SendMsg(m)
-}
-
-func (x *chatSendMessageClient) CloseAndRecv() (*MessageReply, error) {
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	m := new(MessageReply)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
+	return out, nil
 }
 
 func (c *chatClient) ReceiveMessage(ctx context.Context, in *MessageRequest, opts ...grpc.CallOption) (Chat_ReceiveMessageClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Chat_ServiceDesc.Streams[3], "/protos.Chat/ReceiveMessage", opts...)
+	stream, err := c.cc.NewStream(ctx, &Chat_ServiceDesc.Streams[1], "/protos.Chat/ReceiveMessage", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -192,9 +142,9 @@ func (c *chatClient) Disconnect(ctx context.Context, in *ConnectRequest, opts ..
 // All implementations must embed UnimplementedChatServer
 // for forward compatibility
 type ChatServer interface {
-	Writing(Chat_WritingServer) error
+	Writing(context.Context, *StatusRequest) (*StatusReply, error)
 	WhoIsWriting(*StatusRequest, Chat_WhoIsWritingServer) error
-	SendMessage(Chat_SendMessageServer) error
+	SendMessage(context.Context, *MessageRequest) (*MessageReply, error)
 	ReceiveMessage(*MessageRequest, Chat_ReceiveMessageServer) error
 	Connect(context.Context, *ConnectRequest) (*ConnectReply, error)
 	Disconnect(context.Context, *ConnectRequest) (*ConnectReply, error)
@@ -205,14 +155,14 @@ type ChatServer interface {
 type UnimplementedChatServer struct {
 }
 
-func (UnimplementedChatServer) Writing(Chat_WritingServer) error {
-	return status.Errorf(codes.Unimplemented, "method Writing not implemented")
+func (UnimplementedChatServer) Writing(context.Context, *StatusRequest) (*StatusReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Writing not implemented")
 }
 func (UnimplementedChatServer) WhoIsWriting(*StatusRequest, Chat_WhoIsWritingServer) error {
 	return status.Errorf(codes.Unimplemented, "method WhoIsWriting not implemented")
 }
-func (UnimplementedChatServer) SendMessage(Chat_SendMessageServer) error {
-	return status.Errorf(codes.Unimplemented, "method SendMessage not implemented")
+func (UnimplementedChatServer) SendMessage(context.Context, *MessageRequest) (*MessageReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendMessage not implemented")
 }
 func (UnimplementedChatServer) ReceiveMessage(*MessageRequest, Chat_ReceiveMessageServer) error {
 	return status.Errorf(codes.Unimplemented, "method ReceiveMessage not implemented")
@@ -236,30 +186,22 @@ func RegisterChatServer(s grpc.ServiceRegistrar, srv ChatServer) {
 	s.RegisterService(&Chat_ServiceDesc, srv)
 }
 
-func _Chat_Writing_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(ChatServer).Writing(&chatWritingServer{stream})
-}
-
-type Chat_WritingServer interface {
-	SendAndClose(*StatusReply) error
-	Recv() (*StatusRequest, error)
-	grpc.ServerStream
-}
-
-type chatWritingServer struct {
-	grpc.ServerStream
-}
-
-func (x *chatWritingServer) SendAndClose(m *StatusReply) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func (x *chatWritingServer) Recv() (*StatusRequest, error) {
-	m := new(StatusRequest)
-	if err := x.ServerStream.RecvMsg(m); err != nil {
+func _Chat_Writing_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StatusRequest)
+	if err := dec(in); err != nil {
 		return nil, err
 	}
-	return m, nil
+	if interceptor == nil {
+		return srv.(ChatServer).Writing(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.Chat/Writing",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServer).Writing(ctx, req.(*StatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _Chat_WhoIsWriting_Handler(srv interface{}, stream grpc.ServerStream) error {
@@ -283,30 +225,22 @@ func (x *chatWhoIsWritingServer) Send(m *StatusReply) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func _Chat_SendMessage_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(ChatServer).SendMessage(&chatSendMessageServer{stream})
-}
-
-type Chat_SendMessageServer interface {
-	SendAndClose(*MessageReply) error
-	Recv() (*MessageRequest, error)
-	grpc.ServerStream
-}
-
-type chatSendMessageServer struct {
-	grpc.ServerStream
-}
-
-func (x *chatSendMessageServer) SendAndClose(m *MessageReply) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func (x *chatSendMessageServer) Recv() (*MessageRequest, error) {
-	m := new(MessageRequest)
-	if err := x.ServerStream.RecvMsg(m); err != nil {
+func _Chat_SendMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MessageRequest)
+	if err := dec(in); err != nil {
 		return nil, err
 	}
-	return m, nil
+	if interceptor == nil {
+		return srv.(ChatServer).SendMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.Chat/SendMessage",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServer).SendMessage(ctx, req.(*MessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _Chat_ReceiveMessage_Handler(srv interface{}, stream grpc.ServerStream) error {
@@ -374,6 +308,14 @@ var Chat_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*ChatServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "Writing",
+			Handler:    _Chat_Writing_Handler,
+		},
+		{
+			MethodName: "SendMessage",
+			Handler:    _Chat_SendMessage_Handler,
+		},
+		{
 			MethodName: "Connect",
 			Handler:    _Chat_Connect_Handler,
 		},
@@ -384,19 +326,9 @@ var Chat_ServiceDesc = grpc.ServiceDesc{
 	},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "Writing",
-			Handler:       _Chat_Writing_Handler,
-			ClientStreams: true,
-		},
-		{
 			StreamName:    "WhoIsWriting",
 			Handler:       _Chat_WhoIsWriting_Handler,
 			ServerStreams: true,
-		},
-		{
-			StreamName:    "SendMessage",
-			Handler:       _Chat_SendMessage_Handler,
-			ClientStreams: true,
 		},
 		{
 			StreamName:    "ReceiveMessage",

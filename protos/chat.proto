@@ -5,9 +5,9 @@ option go_package = "github.com/gerardjlr7/chat-server/protos";
 package protos;
 
 service Chat {
-  rpc Writing (stream StatusRequest) returns (StatusReply) {}
+  rpc Writing (StatusRequest) returns (StatusReply) {}
   rpc WhoIsWriting (StatusRequest) returns (stream StatusReply) {}
-  rpc SendMessage(stream MessageRequest) returns (MessageReply){}
+  rpc SendMessage(MessageRequest) returns (MessageReply){}
   rpc ReceiveMessage(MessageRequest) returns (stream MessageReply){}
   rpc Connect(ConnectRequest) returns (ConnectReply){}
   rpc Disconnect(ConnectRequest) returns (ConnectReply){}
